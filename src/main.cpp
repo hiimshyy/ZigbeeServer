@@ -181,10 +181,10 @@ void sendAttributes()
     attributes.push_back(attr);
     attr.name = "devices";
     String deviceIds = "";
-    for (size_t i = 0; i < zigbeeServer.penddingDeviceList.size(); ++i)
+    for (size_t i = 0; i < zigbeeServer.pendingDeviceList.size(); ++i)
     {
-        deviceIds += zigbeeServer.penddingDeviceList[i].id.c_str();
-        if (i < zigbeeServer.penddingDeviceList.size() - 1)
+        deviceIds += zigbeeServer.pendingDeviceList[i].id.c_str();
+        if (i < zigbeeServer.pendingDeviceList.size() - 1)
         {
             deviceIds += ","; // Thêm dấu phẩy giữa các ID, trừ ID cuối cùng
         }
