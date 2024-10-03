@@ -17,44 +17,48 @@
 #include <algorithm>
 #include "esp_log.h"
 
+
+#define MAX_DEVICES 10
+
 class PEClient
 {
-public:
-  PEClient(const char *wifiSSID, const char *wifiPassword, const char *mqttServer, int mqttPort, const char *clientId, const char *username, const char *password);
-  void begin();
-  void loop();
-  boolean connected();
-  void sendRequest();
-  void sendMetric(uint64_t timestamp, const char *key, double value);
-  void sendMetric(const char *key, double value);
+  public:
+    PEClient(const char *wifiSSID, const char *wifiPassword, const char *mqttServer, int mqttPort, const char *clientId, const char *username, const char *password);
+    void begin();
+    void loop();
+    boolean connected();
+    void sendMetric(uint64_t timestamp, const char *key, double value);
+    void sendMetric(const char *key, double value);
 
-  void sendAttribute(const char *key, double value);
-  void sendAttribute(const char *key, const char *value);
+    void sendAttribute(const char *key, double value);
+    void sendAttribute(const char *key, const char *value);
 
-  void on(const char *key, void (*callback)(String));
+    void on(const char *key, void (*callback)(String));
+    
+    static char* device_ids[MAX_DEVICES];
+    static int device_count;
 
-private:
-  void initWiFi();
-  void reconnect();
-  static void callback(char *topic, byte *message, unsigned int length);
-  static void responseCallback(char *topic, byte *message, unsigned int length);
+  private:
+    void initWiFi();
+    void reconnect();
+    static void callback(char *topic, byte *message, unsigned int length);
 
-  const char *_ssid;
-  const char *_password;
-  const char *_mqttServer;
-  int _mqttPort;
-  const char *_clientId;
-  const char *_username;
-  const char *_passwordMqtt;
+    const char *_ssid;
+    const char *_password;
+    const char *_mqttServer;
+    int _mqttPort;
+    const char *_clientId;
+    const char *_username;
+    const char *_passwordMqtt;
 
-  WiFiClient _espClient;
-  PubSubClient _client;
+    WiFiClient _espClient;
+    PubSubClient _client;
 
-  String _sendMetricTopic;
-  String _sendAttributeTopic;
+    String _sendMetricTopic;
+    String _sendAttributeTopic;
 
-  std::map<String, std::function<void(String)>> _callbacks;
-  static PEClient *_instance;
+    std::map<String, std::function<void(String)>> _callbacks;
+    static PEClient *_instance;
 };
 
 #endif

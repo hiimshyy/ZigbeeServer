@@ -15,16 +15,18 @@
 
 #define WIFI_SSID "VanPhong2.4g"
 #define WIFI_PASSWORD "Vp@1denchin"
-// #define WIFI_SSID "Only one"
-// #define WIFI_PASSWORD "11112002"
+// #define WIFI_SSID "Co Nhu"
+// #define WIFI_PASSWORD "conhu123"
 
 #define MQTT_SERVER "broker.tbedev.cloud"
 #define MQTT_PORT 1883
 
-#define CLIENT_ID "50bf5161-f426-4c26-8ea1-a5ff53461cbb"
-#define USERNAME "demo"
-#define PASSWORD "demoesp"
-
+// #define CLIENT_ID "50bf5161-f426-4c26-8ea1-a5ff53461cbb"
+// #define USERNAME "demo"
+// #define PASSWORD "demoesp"
+#define CLIENT_ID "e03a686f-80d0-4606-a013-3e9bf47b36ae"
+#define USERNAME "tiensy"
+#define PASSWORD "06102003"
 #define LED1_PIN 2
 
 WiFiUDP ntpUDP;
@@ -35,7 +37,7 @@ ZigbeeServer zigbeeServer;
 void led1Callback(String value);
 void sendAttributes();
 void onCollectData(const char *id, const char *data);
-void getDeviceList();
+void getDevice(String value);
 
 struct Metric {
     std::string name;
@@ -92,6 +94,7 @@ void setup()
 
     peClient.begin();
     peClient.on("led1", led1Callback);
+    peClient.on("devices", getDevice);
 
     while (!peClient.connected())
     {
@@ -118,9 +121,11 @@ void setup()
         NULL,
         1 // Chạy trên core 1
     );
+    
     zigbeeServer.onChange(sendAttributes);
     zigbeeServer.onMessage(onCollectData);
-    zigbeeServer.sendCommand("TBE0123456789ZB","led_status:0");
+    zigbeeServer.updatePendingList(sendAttributes);
+    zigbeeServer.sendCommand("TBE0123456789ZB","led_status:1");
 }
 
 /**
@@ -133,6 +138,7 @@ void setup()
  */
 void loop()
 {
+    
     timeClient.update(); // Cập nhật thời gian mỗi chu kỳ loop
     ESP_LOGI("Main", "NTP Time: %s", timeClient.getFormattedTime().c_str());
     delay(1000);
@@ -163,6 +169,33 @@ void led1Callback(String value)
 {
     digitalWrite(LED1_PIN, stringToBool(value));
 }
+void getDevice(String value)
+{   
+    ESP_LOGI("Get Device","Device ID: %s", value.c_str());
+    std::vector<String> deviceIds;
+    int start = 0;
+    int end = value.indexOf(',');
+    
+    while (end != -1) {
+        String id = value.substring(start, end);
+        id.trim();
+        ESP_LOGI("Get Device","ID: %s", id.c_str());
+        if (id.length() > 0) {
+            zigbeeServer.addDevice(id.c_str());
+            ESP_LOGI("Get Device","Pushed back ID: %s", id.c_str());
+        }
+        start = end + 1;
+        end = value.indexOf(',', start);
+    }
+    
+    // Xử lý phần tử cuối cùng
+    String lastId = value.substring(start);
+    lastId.trim();
+    if (lastId.length() > 0) {
+        zigbeeServer.addDevice(lastId.c_str());
+        ESP_LOGI("Get Device","Pushed back ID: %s", lastId.c_str());
+    }
+}
 
 /**
  * @name sendAttributes
@@ -179,7 +212,7 @@ void sendAttributes()
     attr.name = "localIP";
     attr.value = WiFi.localIP().toString().c_str();
     attributes.push_back(attr);
-    attr.name = "devices";
+    attr.name = "pendingDevices";
     String deviceIds = "";
     for (size_t i = 0; i < zigbeeServer.pendingDeviceList.size(); ++i)
     {
@@ -194,12 +227,8 @@ void sendAttributes()
     for (Attribute attr : attributes)
     {
         peClient.sendAttribute(attr.name.c_str(), attr.value.c_str());
-        //Serial.println("Device id has send!");
+        Serial.println("Devices has sent!");
     }
-}
-void getDeviceList(){
-    peClient.sendRequest();
-
 }
 
 /**

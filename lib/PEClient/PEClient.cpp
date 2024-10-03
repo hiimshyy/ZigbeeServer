@@ -1,6 +1,8 @@
-#include "PEClient.h"
+#include <PEClient.h>
 
 PEClient *PEClient::_instance = nullptr;
+char* PEClient::device_ids[MAX_DEVICES] = {0};
+int PEClient::device_count = 0;
 
 /**
  * @name PEClient
@@ -166,7 +168,7 @@ void PEClient::reconnect()
  */
 void PEClient::callback(char *topic, byte *message, unsigned int length)
 {
-    String messageTemp;
+    String messageTemp = "";
     for (int i = 0; i < length; i++)
     {
         messageTemp += (char)message[i];
@@ -183,11 +185,30 @@ void PEClient::callback(char *topic, byte *message, unsigned int length)
         return;
     }
 
+    // const char* devices = doc["devices"];
+    // device_count = 0;
+
+    // device_ids[MAX_DEVICES] = {0};
+    
+    // char* token = strtok((char*)devices, ",");
+    // while (token != NULL && device_count < MAX_DEVICES) {
+    //     device_ids[device_count] = strdup(token);
+    //     device_count++;
+    //     token = strtok(NULL, ",");
+    // }
+    // ESP_LOGI("PECallback","Device list:");
+    // for (int i = 0 ; i < device_count; ++i)
+    // {
+    //     ESP_LOGI("PECallback","%s", device_ids[i]);
+    // }
+
     JsonObject obj = doc.as<JsonObject>();
     for (JsonPair kv : obj)
     {
         String key = kv.key().c_str();
         String value = kv.value().as<String>();
+        ESP_LOGI("PECallback","Key: %s Value: %s", key, value.c_str());
+        
 
         if (_instance->_callbacks.find(key) != _instance->_callbacks.end())
         {
@@ -196,56 +217,6 @@ void PEClient::callback(char *topic, byte *message, unsigned int length)
     }
 }
 
-void PEClient::responseCallback(char *topic, byte *message, unsigned int length)
-{
-    String messageTemp;
-    for (int i = 0; i < length; i++)
-    {
-        messageTemp += (char)message[i];
-    }
-
-    ESP_LOGI("PEClient", "Received response on topic: %s", topic);
-    ESP_LOGI("PEClient", "Response: %s", messageTemp.c_str());
-
-//     if (strcmp(topic, _instance->responseTopic) == 0)
-//     {
-//         JsonDocument doc; // Adjust size based on expected response size
-//         DeserializationError error = deserializeJson(doc, messageTemp);
-
-//         if (error)
-//         {
-//             ESP_LOGE("PEClient", "Failed to parse device response: %s", error.c_str());
-//             return;
-//         }
-
-//         _instance->deviceList.clear(); // Clear existing devices before adding new ones
-
-//         JsonArray array = doc.as<JsonArray>();
-//         for (JsonVariant v : array)
-//         {
-//             Device device;
-//             device.esp_id = v["id"].as<std::string>();
-//             device.id = v["name"].as<std::string>();
-//             device.secret_key = v["zb_id"].as<std::string>();
-//             device.lastest_t = v["secret_key"].as<std::string>();
-
-//             _instance->deviceList.push_back(device);
-//             ESP_LOGI("PEClient", "Added device: ID=%s, secret key=%s, lastest time=%s",
-//                      device.id.c_str(), device.secret_key.c_str(), device.lastest_t.c_str());
-//         }
-
-//         ESP_LOGI("PEClient", "Total devices received: %d", _instance->deviceList.size());
-//     }
-}
-
-void PEClient::sendRequest()
-{
-    if (!_client.connected())
-    {
-        return;
-    }
-    // _client.publish(requestTopic, "Requesting Device ID");
-}
 /**
  * @name sendMetric
  * @brief Gửi dữ liệu đo được lên MQTT
