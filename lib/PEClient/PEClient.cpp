@@ -6,7 +6,7 @@ int PEClient::device_count = 0;
 
 /**
  * @name PEClient
- * @brief Hàm khởi tạo PEClient
+ * @brief Hàm khởi tạo PEClient 
  *
  * @param {const char*} wifiSSID - Tên wifi
  * @param {const char*} wifiPassword - Mật khẩu wifi
@@ -17,9 +17,55 @@ int PEClient::device_count = 0;
  *
  * @return None
  */
+PEClient::PEClient()
+    : _client(_espClient)
+{
+    _client.setServer(_mqttServer, _mqttPort);
+    _client.setCallback(callback);
+
+    _sendMetricTopic = "v1/devices/";
+    _sendMetricTopic += _clientId;
+    _sendMetricTopic += "/metrics";
+
+    _sendAttributeTopic = "v1/devices/";
+    _sendAttributeTopic += _clientId;
+    _sendAttributeTopic += "/attributes";
+
+    _instance = this;
+}
 PEClient::PEClient(const char *wifiSSID, const char *wifiPassword, const char *mqttServer, int mqttPort, const char *clientId, const char *username, const char *password)
     : _ssid(wifiSSID), _password(wifiPassword), _mqttServer(mqttServer), _mqttPort(mqttPort), _clientId(clientId), _username(username), _passwordMqtt(password), _client(_espClient)
 {
+    _client.setServer(_mqttServer, _mqttPort);
+    _client.setCallback(callback);
+
+    _sendMetricTopic = "v1/devices/";
+    _sendMetricTopic += _clientId;
+    _sendMetricTopic += "/metrics";
+
+    _sendAttributeTopic = "v1/devices/";
+    _sendAttributeTopic += _clientId;
+    _sendAttributeTopic += "/attributes";
+
+    _instance = this;
+}
+
+PEClient::~PEClient()
+{
+    _client.disconnect();
+    ESP_LOGI("MqttClient", "Disconnected");
+
+}
+void PEClient::init(const char *wifiSSID, const char *wifiPassword, const char *mqttServer, int mqttPort, const char *clientId, const char *username, const char *password)
+{
+    _ssid = wifiSSID;
+    _password = wifiPassword;
+    _mqttServer = mqttServer;
+    _mqttPort = mqttPort;
+    _clientId = clientId;
+    _username = username;
+    _passwordMqtt = password;
+
     _client.setServer(_mqttServer, _mqttPort);
     _client.setCallback(callback);
 
@@ -42,10 +88,10 @@ PEClient::PEClient(const char *wifiSSID, const char *wifiPassword, const char *m
  * 
  * @return None
  */
-void PEClient::begin()
-{
+void PEClient::begin() {
     // Serial.begin(115200);
     initWiFi();
+    _is_stopped = false;
     xTaskCreatePinnedToCore(
         [](void *pvParameters)
         {
@@ -60,7 +106,7 @@ void PEClient::begin()
         10000,
         this,
         1,
-        NULL,
+        &mqttTaskHandle,
         1 // Chạy trên core 1
     );
 }
@@ -73,13 +119,27 @@ void PEClient::begin()
  * 
  * @return None
  */
-void PEClient::loop()
-{
+void PEClient::loop() {
     if (!_client.connected())
     {
         reconnect();
     }
     _client.loop();
+}
+
+void PEClient::stop() {
+    _client.disconnect();
+    _is_stopped = true;
+    ESP_LOGI("MqttClient", "Disconnected");
+        // Xóa task để giải phóng tài nguyên
+    // if (mqttTaskHandle != NULL)
+    // {
+    //     vTaskDelete(mqttTaskHandle); // Xóa task bằng handle
+    //     mqttTaskHandle = NULL;       // Đặt handle về NULL để tránh xóa lại
+    // }
+    WiFi.disconnect();
+    ESP_LOGI("MqttClient", "WiFi disconnected");
+
 }
 
 /**
@@ -90,8 +150,7 @@ void PEClient::loop()
  * 
  * @return boolean - True nếu kết nối được, False nếu ngược lại
  */
-boolean PEClient::connected()
-{
+boolean PEClient::connected() {
     return _client.connected();
 }
 
@@ -104,8 +163,7 @@ boolean PEClient::connected()
  * 
  * @return None
  */
-void PEClient::initWiFi()
-{
+void PEClient::initWiFi() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(_ssid, _password);
     ESP_LOGI("PEClient", "Connecting to the WiFi network");
@@ -116,7 +174,7 @@ void PEClient::initWiFi()
         ESP_LOGI("PEClient", "WiFi status: %d", WiFi.status());
         if(WiFi.status() == WL_DISCONNECTED || WiFi.status() == WL_CONNECTION_LOST || WiFi.status() == WL_CONNECT_FAILED) {
             ESP_LOGE("PEClient", "WiFi disconnected");
-            ESP.restart();
+            // ESP.restart();
         }
     }
     ESP_LOGI("PEClient", "Connected to the WiFi network");
@@ -184,23 +242,6 @@ void PEClient::callback(char *topic, byte *message, unsigned int length)
         ESP_LOGE("PEClient", "deserializeJson() failed: %s", error.c_str());
         return;
     }
-
-    // const char* devices = doc["devices"];
-    // device_count = 0;
-
-    // device_ids[MAX_DEVICES] = {0};
-    
-    // char* token = strtok((char*)devices, ",");
-    // while (token != NULL && device_count < MAX_DEVICES) {
-    //     device_ids[device_count] = strdup(token);
-    //     device_count++;
-    //     token = strtok(NULL, ",");
-    // }
-    // ESP_LOGI("PECallback","Device list:");
-    // for (int i = 0 ; i < device_count; ++i)
-    // {
-    //     ESP_LOGI("PECallback","%s", device_ids[i]);
-    // }
 
     JsonObject obj = doc.as<JsonObject>();
     for (JsonPair kv : obj)

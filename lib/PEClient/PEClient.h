@@ -23,9 +23,12 @@
 class PEClient
 {
   public:
+    PEClient();
     PEClient(const char *wifiSSID, const char *wifiPassword, const char *mqttServer, int mqttPort, const char *clientId, const char *username, const char *password);
+    void init(const char *wifiSSID, const char *wifiPassword, const char *mqttServer, int mqttPort, const char *clientId, const char *username, const char *password);
     void begin();
     void loop();
+    void stop();
     boolean connected();
     void sendMetric(uint64_t timestamp, const char *key, double value);
     void sendMetric(const char *key, double value);
@@ -34,6 +37,9 @@ class PEClient
     void sendAttribute(const char *key, const char *value);
 
     void on(const char *key, void (*callback)(String));
+
+    ~PEClient();
+    TaskHandle_t mqttTaskHandle = NULL;
     
     static char* device_ids[MAX_DEVICES];
     static int device_count;
@@ -50,6 +56,8 @@ class PEClient
     const char *_clientId;
     const char *_username;
     const char *_passwordMqtt;
+
+    bool _is_stopped;
 
     WiFiClient _espClient;
     PubSubClient _client;
